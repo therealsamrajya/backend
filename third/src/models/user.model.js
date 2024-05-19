@@ -52,7 +52,7 @@ const userSchema = new Schema(
 userSchema.pre("save", async function (next) {
   if (this.isModified("password")) return next();
   //password checking if modified
-  this.password = bcrypt.hash(this.password, 10); //used to encrpyt the password upto 10 rounds
+  this.password = await bcrypt.hash(this.password, 10); //used to encrpyt the password upto 10 rounds
   next();
 });
 
