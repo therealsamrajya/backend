@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -409,6 +410,55 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, channel[0], "User channel fetch succesful"));
 });
+//at first we joined vvideos and users then we took out the owner field from the videos field by using subpipeline.lookup gives array as op
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user =
+    await User.aggregate[
+      ({
+        $match: {
+          _id: new mongoose.Types.ObjectId.createFromTime(req.user._id),
+        },
+      },
+      {
+        $lookup: {
+          from: "videos",
+          localField: "watchHistory",
+          foreignField: "_id",
+          as: "watchHistory",
+          pipeline: [
+            {
+              $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                  {
+                    $project: {
+                      fullName: 1,
+                      username: 1,
+                      avatar: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $addFields: {
+                owner: {
+                  $first: "$owner",
+                },
+              },
+            },
+          ],
+        },
+      })
+    ];
+  //gets string req.user._id
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user[0].watchHistory, "Watch History fetched"));
+});
 
 export {
   registerUser,
@@ -421,4 +471,5 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getWatchHistory,
 };
