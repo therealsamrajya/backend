@@ -166,8 +166,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined, //clearing out refreshtoken for logout
+      $unset: {
+        refreshToken: 1, //clearing out refreshtoken for logout
       },
     },
     {
@@ -412,52 +412,57 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 });
 //at first we joined vvideos and users then we took out the owner field from the videos field by using subpipeline.lookup gives array as op
 const getWatchHistory = asyncHandler(async (req, res) => {
-  const user =
-    await User.aggregate[
-      ({
-        $match: {
-          _id: new mongoose.Types.ObjectId.createFromTime(req.user._id),
-        },
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
       },
-      {
-        $lookup: {
-          from: "videos",
-          localField: "watchHistory",
-          foreignField: "_id",
-          as: "watchHistory",
-          pipeline: [
-            {
-              $lookup: {
-                from: "users",
-                localField: "owner",
-                foreignField: "_id",
-                as: "owner",
-                pipeline: [
-                  {
-                    $project: {
-                      fullName: 1,
-                      username: 1,
-                      avatar: 1,
-                    },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
                   },
-                ],
-              },
-            },
-            {
-              $addFields: {
-                owner: {
-                  $first: "$owner",
                 },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
               },
             },
-          ],
-        },
-      })
-    ];
-  //gets string req.user._id
+          },
+        ],
+      },
+    },
+  ]);
+
   return res
     .status(200)
-    .json(new ApiResponse(200, user[0].watchHistory, "Watch History fetched"));
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully"
+      )
+    );
 });
 
 export {
